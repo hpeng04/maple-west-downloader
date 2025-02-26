@@ -1,0 +1,6 @@
+pandas
+beautifulsoup4
+requests-html
+pydrive
+openpyxl
+python-dateutil

@@ -1,0 +1,4 @@
+Unit 82 - Return Air Avg C quality checking disabled as it is pulsing into negatives
+Unit 81 - Natural Gas Pulse disabled
+Unit 2810 - Temperatures quality checking disabled
+Unit 2808 - Pulse Data quality checking disabled

@@ -1,0 +1,112 @@
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2023-10
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2023-10
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2023-11
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2023-11
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2023-12
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2023-12
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-01
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-01
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-02
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-02
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-03
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-03
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-04
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-04
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-05
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-05
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-06
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-06
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-07
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-07
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-08
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-08
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-09
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-09
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-10
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-10
+
+
+Downloading Unit 2812: 68.182.34.129:9011
+Unit 2812: Empty data from http://68.182.34.129:9011/index.php/pages/export/exportMonthly/01121001/2024-11
+
+
+Downloading Unit 2814: 68.182.34.129:9009
+Unit 2814: Empty data from http://68.182.34.129:9009/index.php/pages/export/exportMonthly/01120966/2024-11
+
+
