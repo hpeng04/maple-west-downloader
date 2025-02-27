@@ -75,27 +75,54 @@ class QualityChecker:
                     
         return [good_count, missing_count, bad_count]
 
-    def _apply_conditional_formatting(self, worksheet):
-        """Apply conditional formatting to cells based on missing + bad percentage"""
-        for row in worksheet.iter_rows(min_row=2):  # Skip header row
-            for cell in row[1:]:  # Skip date column
-                if cell.value:
-                    # Extract counts from the formatted string
-                    parts = cell.value.split(', ')
-                    good = int(parts[0].split(': ')[1])
-                    missing = int(parts[1].split(': ')[1])
-                    bad = int(parts[2].split(': ')[1])
+    def process_daily_data(self, data_path, unit_no, date_str):
+        """Process data for a specific unit and day (for minute data)"""
+        unit_config = self.units[unit_no]
+        results = {}
+        
+        # Initialize results for all channels
+        for channel_name in channels.keys():
+            if unit_config['channels'].get(channel_name, False):
+                results[channel_name] = [0, 0, 0]  # [good, missing, bad]
+                
+        # Read the CSV file for this day
+        unit_path = os.path.join(data_path, f'UNIT {unit_no}')
+        file_path = os.path.join(unit_path, f'Unit_{unit_no}_{date_str}.csv')
+        
+        if not os.path.exists(file_path):
+            # If file doesn't exist, count all points as missing
+            expected_points = 1440  # One reading per minute
+            for channel_name in results:
+                results[channel_name][1] = expected_points  # All points missing
+            return results
+            
+        try:
+            data = pd.read_csv(file_path)
+            total_points_found = len(data)
+            
+            # Check quality for each channel
+            for channel_name in channels.keys():
+                if unit_config['channels'].get(channel_name, False):
+                    quality = self._check_data_quality(data, unit_config, channel_name)
+                    if quality:
+                        results[channel_name] = quality
+                        
+            # Add missing points due to missing rows to all channels
+            missing_points = 1440 - total_points_found  # Expected points minus found points
+            if missing_points > 0:
+                for channel_name in results:
+                    results[channel_name][1] += missing_points  # Add to missing count
                     
-                    total = good + missing + bad
-                    if total > 0:
-                        problem_percentage = (missing + bad) / total * 100
-                        if problem_percentage > 5:
-                            cell.fill = self.red_fill
-                        elif problem_percentage > 1:
-                            cell.fill = self.yellow_fill
+        except Exception as e:
+            print(f"Error processing file {file_path}: {str(e)}")
+            # Count all points as missing if file can't be processed
+            for channel_name in results:
+                results[channel_name][1] = 1440
+                
+        return results
 
     def process_data(self, data_path, unit_no, month, data_type):
-        """Process data for a specific unit and month"""
+        """Process data for a specific unit and month (for hour data)"""
         unit_config = self.units[unit_no]
         results = {}
         
@@ -113,7 +140,7 @@ class QualityChecker:
         # Calculate expected number of data points for the month
         year, month_num = map(int, month.split('-'))
         days_in_month = calendar.monthrange(year, month_num)[1]
-        expected_points = days_in_month * (1440 if data_type.lower() == 'minute' else 24)
+        expected_points = days_in_month * 24  # 24 points per day for hour data
         
         total_points_found = 0
         for file in os.listdir(unit_path):
@@ -140,6 +167,25 @@ class QualityChecker:
                 results[channel_name][1] += missing_points  # Add to missing count
                     
         return results
+
+    def _apply_conditional_formatting(self, worksheet):
+        """Apply conditional formatting to cells based on missing + bad percentage"""
+        for row in worksheet.iter_rows(min_row=2):  # Skip header row
+            for cell in row[1:]:  # Skip date column
+                if cell.value:
+                    # Extract counts from the formatted string
+                    parts = cell.value.split(', ')
+                    good = int(parts[0].split(': ')[1])
+                    missing = int(parts[1].split(': ')[1])
+                    bad = int(parts[2].split(': ')[1])
+                    
+                    total = good + missing + bad
+                    if total > 0:
+                        problem_percentage = (missing + bad) / total * 100
+                        if problem_percentage > 5:
+                            cell.fill = self.red_fill
+                        elif problem_percentage > 1:
+                            cell.fill = self.yellow_fill
 
 class BulkDownloadGUI:
     def __init__(self, root):
@@ -749,23 +795,41 @@ class BulkDownloadGUI:
                 # Process each file
                 for file in csv_files:
                     try:
-                        # Extract month from filename
+                        # Extract date from filename
                         date_str = os.path.basename(file).split('_')[-1].replace('.csv', '')
-                        if len(date_str) >= 7:  # Ensure we have at least YYYY-MM
-                            month = date_str[:7]  # Get YYYY-MM part
-                            
-                            # Process data for this month
-                            results = checker.process_data(output_dir, unit.unit_no, month, data_type)
-                            if results:
-                                # Store bad and missing counts separately
-                                channel_data = {}
-                                for ch in bad_df.columns:
-                                    counts = results.get(ch, [0, 0, 0])
-                                    channel_data[ch] = counts
+                        
+                        if data_type.lower() == 'minute':
+                            # For minute data, use the full date (YYYY-MM-DD)
+                            if len(date_str) == 10:  # YYYY-MM-DD format
+                                # Process data for this day
+                                results = checker.process_daily_data(output_dir, unit.unit_no, date_str)
+                                if results:
+                                    # Store bad and missing counts separately
+                                    channel_data = {}
+                                    for ch in bad_df.columns:
+                                        counts = results.get(ch, [0, 0, 0])
+                                        channel_data[ch] = counts
+                                    
+                                    # Now set the values for both DataFrames using the same counts
+                                    bad_df.loc[date_str] = {ch: channel_data[ch][2] for ch in bad_df.columns}
+                                    missing_df.loc[date_str] = {ch: channel_data[ch][1] for ch in missing_df.columns}
+                        else:  # Hour data
+                            # For hour data, use just the month (YYYY-MM)
+                            if len(date_str) >= 7:  # Ensure we have at least YYYY-MM
+                                month = date_str[:7]  # Get YYYY-MM part
                                 
-                                # Now set the values for both DataFrames using the same counts
-                                bad_df.loc[month] = {ch: channel_data[ch][2] for ch in bad_df.columns}
-                                missing_df.loc[month] = {ch: channel_data[ch][1] for ch in missing_df.columns}
+                                # Process data for this month
+                                results = checker.process_data(output_dir, unit.unit_no, month, data_type)
+                                if results:
+                                    # Store bad and missing counts separately
+                                    channel_data = {}
+                                    for ch in bad_df.columns:
+                                        counts = results.get(ch, [0, 0, 0])
+                                        channel_data[ch] = counts
+                                    
+                                    # Now set the values for both DataFrames using the same counts
+                                    bad_df.loc[month] = {ch: channel_data[ch][2] for ch in bad_df.columns}
+                                    missing_df.loc[month] = {ch: channel_data[ch][1] for ch in missing_df.columns}
                     except Exception as e:
                         print(f"{color.RED}Error processing {file}: {str(e)}{color.END}")
                 
@@ -777,7 +841,7 @@ class BulkDownloadGUI:
                     
                     # Create Excel writer object
                     with pd.ExcelWriter(report_file, engine='openpyxl') as writer:
-                        # Save both DataFrames to different sheets
+                        # Save both DataFrames to different sheets, sorting by date
                         if not bad_df.empty:
                             bad_df.sort_index().to_excel(writer, sheet_name='Bad Values')
                         if not missing_df.empty:
@@ -793,12 +857,16 @@ class BulkDownloadGUI:
                                 if cell.value is not None:
                                     try:
                                         value = float(cell.value)
-                                        # Calculate total points for the month
+                                        # Calculate total points based on data type
                                         date_str = worksheet.cell(row=cell.row, column=1).value
                                         if date_str:
-                                            year, month = map(int, date_str.split('-'))
-                                            days_in_month = calendar.monthrange(year, month)[1]
-                                            total_points = days_in_month * (1440 if data_type.lower() == 'minute' else 24)
+                                            if data_type.lower() == 'minute':
+                                                total_points = 1440  # Points per day for minute data
+                                            else:
+                                                year, month = map(int, date_str.split('-'))
+                                                days_in_month = calendar.monthrange(year, month)[1]
+                                                total_points = days_in_month * 24  # Points per month for hour data
+                                                
                                             percentage = (value / total_points) * 100
                                             if percentage > 5:
                                                 cell.fill = checker.red_fill
