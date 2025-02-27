@@ -75,12 +75,6 @@ class QualityChecker:
                     
         return [good_count, missing_count, bad_count]
 
-    def _format_quality_result(self, counts):
-        """Format quality results as text"""
-        if counts is None or len(counts) != 3:
-            return "Good: 0, Missing: 0, Bad: 0"
-        return f"Good: {counts[0]}, Missing: {counts[1]}, Bad: {counts[2]}"
-
     def _apply_conditional_formatting(self, worksheet):
         """Apply conditional formatting to cells based on missing + bad percentage"""
         for row in worksheet.iter_rows(min_row=2):  # Skip header row
@@ -116,11 +110,18 @@ class QualityChecker:
             print(f"No data directory found for Unit {unit_no} in {unit_path}")
             return None
             
+        # Calculate expected number of data points for the month
+        year, month_num = map(int, month.split('-'))
+        days_in_month = calendar.monthrange(year, month_num)[1]
+        expected_points = days_in_month * (1440 if data_type.lower() == 'minute' else 24)
+        
+        total_points_found = 0
         for file in os.listdir(unit_path):
             # Check if file matches the month and is a CSV file
             if month in file and file.endswith('.csv'):
                 try:
                     data = pd.read_csv(os.path.join(unit_path, file))
+                    total_points_found += len(data)
                     
                     # Check quality for each channel
                     for channel_name in channels.keys():
@@ -131,7 +132,13 @@ class QualityChecker:
                 except Exception as e:
                     print(f"Error processing file {file}: {str(e)}")
                     continue
-                            
+        
+        # Add missing points due to missing rows or failed downloads to all channels
+        missing_points = expected_points - total_points_found
+        if missing_points > 0:
+            for channel_name in results:
+                results[channel_name][1] += missing_points  # Add to missing count
+                    
         return results
 
 class BulkDownloadGUI:
