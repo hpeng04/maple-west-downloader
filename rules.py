@@ -106,7 +106,7 @@ def check_missing_rows(data: pd.DataFrame, unit_no) -> pd.DataFrame:
             expected_time = increment_time(expected_time, time_step)
             index += 1  # Adjust index to account for the inserted row
 
-    return data, errors, warnings, bad_indices
+    return errors, warnings, bad_indices
 
 def check_total_energy(data, unit_no):
     errors = []

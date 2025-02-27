@@ -54,20 +54,24 @@ class QualityChecker:
         bad_count = 0
         
         for value in values:
+            # First check if value is missing
             if pd.isna(value) or value == "":
                 missing_count += 1
-            elif not isinstance(value, (int, float)):
+                continue  # Skip to next value since this one is missing
+                
+            # Try to convert to float if it's not already a number
+            if not isinstance(value, (int, float)):
                 try:
                     value = float(value)
                 except:
-                    missing_count += 1
+                    missing_count += 1  # Count as missing if we can't convert to float
                     continue
                     
-            if isinstance(value, (int, float)):
-                if channel_info.min_value <= value <= channel_info.max_value:
-                    good_count += 1
-                else:
-                    bad_count += 1
+            # At this point, value is a valid number, check if it's within limits
+            if channel_info.min_value <= value <= channel_info.max_value:
+                good_count += 1
+            else:
+                bad_count += 1  # Only count as bad if it's a valid number outside limits
                     
         return [good_count, missing_count, bad_count]
 
@@ -129,64 +133,6 @@ class QualityChecker:
                     continue
                             
         return results
-
-    def update_quality_report(self, data_type='Minute'):
-        """Update quality reports for all units"""
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir, exist_ok=True)
-            
-        for unit_no in self.units.keys():
-            unit_path = os.path.join(self.output_dir, f'UNIT {unit_no}')
-            if not os.path.exists(unit_path):
-                print(f"No data directory found for Unit {unit_no}")
-                continue
-
-            report_file = os.path.join(self.output_dir, 'quality_reports', f'unit_{unit_no}_{data_type.lower()}_quality.xlsx')
-            os.makedirs(os.path.dirname(report_file), exist_ok=True)
-            
-            # Load existing report or create new one
-            if os.path.exists(report_file):
-                report_df = pd.read_excel(report_file, index_col=0)
-            else:
-                report_df = pd.DataFrame(columns=[ch for ch in channels.keys() if self.units[unit_no]['channels'].get(ch, False)])
-            
-            # Get unique months from filenames
-            months = set()
-            for file in os.listdir(unit_path):
-                if data_type in file and file.endswith('.csv'):
-                    try:
-                        # Extract YYYY-MM from filename
-                        date_str = file.split('_')[-1].replace('.csv', '')
-                        if len(date_str) >= 7:  # Ensure we have at least YYYY-MM
-                            months.add(date_str[:7])  # Get YYYY-MM part
-                    except:
-                        continue
-            
-            # Process each month's data
-            new_data_added = False
-            for month in months:
-                if month not in report_df.index:
-                    results = self.process_data(self.output_dir, unit_no, month, data_type)
-                    if results:
-                        report_df.loc[month] = {ch: self._format_quality_result(results.get(ch)) for ch in report_df.columns}
-                        new_data_added = True
-                else:
-                    print(f"Month {month} already exists in report for Unit {unit_no}")
-            
-            if not new_data_added:
-                print(f"No new data to add for Unit {unit_no}")
-                continue
-            
-            # Save updated report with conditional formatting
-            report_df.sort_index().to_excel(report_file)
-            
-            # Apply conditional formatting
-            wb = load_workbook(report_file)
-            ws = wb.active
-            self._apply_conditional_formatting(ws)
-            wb.save(report_file)
-            
-            print(f"Updated quality report for Unit {unit_no} ({data_type} data)")
 
 class BulkDownloadGUI:
     def __init__(self, root):
@@ -420,10 +366,10 @@ class BulkDownloadGUI:
             end_year = int(self.end_year.get())
             
             start_date = datetime(start_year, start_month, 1)
-            end_date = datetime(end_year, end_month, 
-                              calendar.monthrange(end_year, end_month)[1])
+            # Set end_date to the first day of the selected end month (exclusive)
+            end_date = datetime(end_year, end_month, 1)
             
-            if start_date > end_date:
+            if start_date >= end_date:
                 raise ValueError("Start date must be before end date")
                 
             return start_date, end_date
@@ -741,7 +687,9 @@ class BulkDownloadGUI:
         """Generate list of dates for daily (minute) data downloads"""
         dates = []
         current = start_date
-        while current < end_date:
+        # Stop at the first day of the end month
+        end_month_start = datetime(end_date.year, end_date.month, 1)
+        while current < end_month_start:
             dates.append(current)
             current += timedelta(days=1)
         return dates
@@ -775,9 +723,11 @@ class BulkDownloadGUI:
                     print(f"No data directory found for Unit {unit.unit_no}")
                     continue
                 
-                # Create DataFrame to store quality results
-                report_df = pd.DataFrame(columns=[ch for ch in channels.keys() 
-                                               if checker.units[unit.unit_no]['channels'].get(ch, False)])
+                # Create DataFrames to store quality results - one for bad counts and one for missing counts
+                monitored_channels = [ch for ch in channels.keys() 
+                                   if checker.units[unit.unit_no]['channels'].get(ch, False)]
+                bad_df = pd.DataFrame(columns=monitored_channels)
+                missing_df = pd.DataFrame(columns=monitored_channels)
                 
                 # Get all CSV files for this unit
                 csv_files = []
@@ -800,22 +750,61 @@ class BulkDownloadGUI:
                             # Process data for this month
                             results = checker.process_data(output_dir, unit.unit_no, month, data_type)
                             if results:
-                                report_df.loc[month] = {ch: checker._format_quality_result(results.get(ch)) 
-                                                      for ch in report_df.columns}
+                                # Store bad and missing counts separately
+                                channel_data = {}
+                                for ch in bad_df.columns:
+                                    counts = results.get(ch, [0, 0, 0])
+                                    channel_data[ch] = counts
+                                
+                                # Now set the values for both DataFrames using the same counts
+                                bad_df.loc[month] = {ch: channel_data[ch][2] for ch in bad_df.columns}
+                                missing_df.loc[month] = {ch: channel_data[ch][1] for ch in missing_df.columns}
                     except Exception as e:
                         print(f"{color.RED}Error processing {file}: {str(e)}{color.END}")
                 
                 # Save results to Excel file if we have data
-                if not report_df.empty:
+                if not (bad_df.empty and missing_df.empty):  # Changed condition to allow one sheet to be empty
                     report_file = os.path.join(output_dir, 'quality_reports', 
                                              f'unit_{unit.unit_no}_{data_type.lower()}_quality.xlsx')
                     os.makedirs(os.path.dirname(report_file), exist_ok=True)
-                    report_df.sort_index().to_excel(report_file)
                     
-                    # Apply conditional formatting
+                    # Create Excel writer object
+                    with pd.ExcelWriter(report_file, engine='openpyxl') as writer:
+                        # Save both DataFrames to different sheets
+                        if not bad_df.empty:
+                            bad_df.sort_index().to_excel(writer, sheet_name='Bad Values')
+                        if not missing_df.empty:
+                            missing_df.sort_index().to_excel(writer, sheet_name='Missing Values')
+                    
+                    # Apply conditional formatting to both sheets
                     wb = load_workbook(report_file)
-                    ws = wb.active
-                    checker._apply_conditional_formatting(ws)
+                    
+                    # Function to apply formatting based on percentage
+                    def apply_formatting_to_sheet(worksheet):
+                        for row in worksheet.iter_rows(min_row=2):  # Skip header row
+                            for cell in row[1:]:  # Skip date column
+                                if cell.value is not None:
+                                    try:
+                                        value = float(cell.value)
+                                        # Calculate total points for the month
+                                        date_str = worksheet.cell(row=cell.row, column=1).value
+                                        if date_str:
+                                            year, month = map(int, date_str.split('-'))
+                                            days_in_month = calendar.monthrange(year, month)[1]
+                                            total_points = days_in_month * (1440 if data_type.lower() == 'minute' else 24)
+                                            percentage = (value / total_points) * 100
+                                            if percentage > 5:
+                                                cell.fill = checker.red_fill
+                                            elif percentage > 1:
+                                                cell.fill = checker.yellow_fill
+                                    except (ValueError, TypeError):
+                                        continue
+                    
+                    # Apply formatting to both sheets if they exist
+                    for sheet_name in ['Bad Values', 'Missing Values']:
+                        if sheet_name in wb.sheetnames:
+                            apply_formatting_to_sheet(wb[sheet_name])
+                    
                     wb.save(report_file)
                     
                     print(f"{color.GREEN}Created quality report: {report_file}{color.END}")

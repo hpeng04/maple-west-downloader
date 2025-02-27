@@ -212,7 +212,7 @@ class Unit:
         
         Log.write(f"Checking Unit {self.unit_no}: {self.ip_address}:{self.port}")
         print(f"Checking Unit {self.unit_no}: {self.ip_address}:{self.port}")
-        self.data, missing_row_errors, missing_row_warnings, bad_indices = check_missing_rows(self.data, self.unit_no)
+        missing_row_errors, missing_row_warnings, bad_indices = check_missing_rows(self.data, self.unit_no)
         self.errors += missing_row_errors
         self.warnings += missing_row_warnings
 
