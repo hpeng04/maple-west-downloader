@@ -10,6 +10,33 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 from alert import send_email
 from dateutil.relativedelta import relativedelta
+import requests
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
+from google.oauth2 import service_account
+import io
+
+google_paths = {
+    77: '1Z1ETfHlgitFOBx8SWqYiotkezFwL2ahb',
+    78: '1oOKr0Kt2Jg2j_tqzv6sdRF4bEuNofxy2',
+    79: '1NUruYAn2kafZTrUOFeMndmKHCyXnBVFM',
+    80: '1Idx4pE-vBeRzFQXoBpiwRgfHbh-CZ5Go',
+    81: '1Y17UL5XGQPlFf361V-9FLhP-JhAuFzaI',
+    82: '1ud6EOvBFkXGPR8McKDEJR6Dx3y_NssiF',
+    83: '1O08BMUVd4CnNsYYoH5l1mRYGW97AXsA5',
+    84: '1UHTnt1gOF28LoF7QnS-JcQ69q20pdeDc',
+    85: '1j2tTzGza7hDmwGukHo1HQFTYlMGg1qmo',
+    86: '1pmiaLqn_M3y3Ebn3tT9LnHBvRbgHOsA6',
+    87: '1JPCc3CIt1R5pW61DHtC24wVslnWC8QhN',
+    2804: '1X8M-Ec0y-vl3CrJ9zZxuMUMYAVlMF7fJ',
+    2806: '1Fh7r38--RT9_J1-e4XJnzLdQkXjD0zO5',
+    2808: '127cFRH_0pa1eZN67dYp4H63dM4hwX_43',
+    2810: '1euo9FBA2qem2oaa_ze0bxudcA9ZSOSVc',
+    2812: '1KH_x8Sb7ix-KdBUJYvsGZDOB5Ec3oaei',
+    2814: '125PAJ1RCLN4IDGVUeyh-lmvXQEhY6vMH',
+    2816: '1uCERJeoSE2Oexa59g3Nv7SZNrzQZfHp0',
+    2818: '17dVMIaaF0kzZofbUA4kJAIeYbVhrlNHt'
+}
 
 def is_float(value):
     try:
@@ -87,6 +114,7 @@ class Unit:
         '''
         Log.write(f"Downloading Unit {self.unit_no}: {self.ip_address}:{self.port}")
         print(f"Downloading Unit {self.unit_no}: {self.ip_address}:{self.port}")
+        date = url.split('/')[-1]
         try:
             response = pd.read_csv(url, header=0, on_bad_lines='skip')
             if response.empty:
@@ -99,16 +127,75 @@ class Unit:
             self.data = None
             self.errors.append(f"Unit {self.unit_no}: Empty data from {url}")
             # Extract date from URL for failed downloads log
-            date = url.split('/')[-1]
             Log.record_failed_downloads(self.unit_no, date, url)
         except Exception as e:
-            Log.write(f"Unit {self.unit_no}: Failed to download data from {url}: {str(e)}\n\n")
-            print(f"{color.RED}Unit {self.unit_no}: Failed to download data from {url}: {str(e)}{color.END}")
-            self.data = None
-            self.errors.append(f"Unit {self.unit_no}: Failed to download data from {url}")
-            # Extract date from URL for failed downloads log
-            date = url.split('/')[-1]
-            Log.record_failed_downloads(self.unit_no, date, url)
+            if self.unit_no in google_paths:
+                try:
+                    
+                    drive_folder_id = google_paths[self.unit_no]
+                    # Format the expected file name pattern in Google Drive
+                    filename = f'{self.serial}_{date}.csv'
+
+                    print(f"{color.RED}Unit {self.unit_no}: Failed to download data from {url}: {str(e)}{color.END}")
+                    Log.write(f"Attempting to download {filename} from Google Drive for Unit {self.unit_no}")
+                    print(f"Attempting to download {filename} from Google Drive for Unit {self.unit_no}")
+                    
+                    # Set up credentials
+                    SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+                    SERVICE_ACCOUNT_FILE = 'service-account.json'  # Path to your service account key file
+                    
+                    credentials = service_account.Credentials.from_service_account_file(
+                        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+                    
+                    # Build the Drive API client
+                    service = build('drive', 'v3', credentials=credentials)
+                    
+                    # Search for the file in the specific folder
+                    query = f"'{drive_folder_id}' in parents and name = '{filename}' and trashed = false"
+                    results = service.files().list(
+                        q=query,
+                        fields="files(id, name)"
+                    ).execute()
+                    
+                    items = results.get('files', [])
+                    
+                    if not items:
+                        print(f"{color.RED}File {filename} not found in Google Drive folder{color.END}")
+                        Log.write(f"File {filename} not found in Google Drive folder\n")
+                    else:
+                        file_id = items[0]['id']
+                        
+                        # Download the file
+                        request = service.files().get_media(fileId=file_id)
+                        file_handle = io.BytesIO()
+                        downloader = MediaIoBaseDownload(file_handle, request)
+                        
+                        done = False
+                        while not done:
+                            status, done = downloader.next_chunk()
+                        
+                        # Process the downloaded file
+                        file_handle.seek(0)
+                        backup_data = pd.read_csv(file_handle)
+                        
+                        if not backup_data.empty:
+                            self.data = self._fix_order(backup_data)
+                            print(f"Successfully loaded {filename} for Unit {self.unit_no} from Google Drive")
+                            Log.write(f"Successfully loaded {filename} for Unit {self.unit_no} from Google Drive\n")
+                            return
+                        else:
+                            print(f"{color.RED}Downloaded file from Google Drive is empty{color.END}")
+                            Log.write(f"Downloaded file from Google Drive is empty\n")
+                
+                except Exception as backup_error:
+                    print(f"{color.RED}Failed to download from Google Drive: {str(backup_error)}{color.END}")
+                    Log.write(f"Failed to download from Google Drive: {str(backup_error)}\n")
+            # Log.write(f"Unit {self.unit_no}: Failed to download data from {url}: {str(e)}\n\n")
+            # self.data = None
+            # self.errors.append(f"Unit {self.unit_no}: Failed to download data from {url}")
+            # # Extract date from URL for failed downloads log
+            # date = url.split('/')[-1]
+            # Log.record_failed_downloads(self.unit_no, date, url)
 
     def load_data(self, path:str):
         '''
