@@ -226,7 +226,7 @@ class BulkDownloadGUI:
         self.combine_var = tk.BooleanVar(value=True)
         self.quality_report_var = tk.BooleanVar(value=True)
         self.is_downloading = False
-        self.start_time = None  # Add start_time initialization
+        self.start_time = time.time()  # Add start_time initialization
         
         # Create GUI elements
         self.create_unit_selection()
